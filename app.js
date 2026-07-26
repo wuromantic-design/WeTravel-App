@@ -116,7 +116,6 @@ createApp({
             if (newExpense.value.method === name) newExpense.value.method = '';
         };
         const updatePaymentMethods = () => { paymentMethods.value = paymentMethodsStr.value.split(',').map(s => s.trim()).filter(s => s); };
-        const currencyLabel = computed(() => setup.value.currency || '外幣');
         const currencySymbol = computed(() => { const map = { 'JPY': '¥', 'CNY': '¥', 'USD': '$', 'EUR': '€', 'KRW': '₩', 'GBP': '£', 'TWD': 'NT$', 'HKD': 'HK$', 'THB': '฿', 'VND': '₫' }; return map[setup.value.currency] || '$'; });
         const mapProviderLabel = computed(() => { const map = { 'google': 'Google Maps', 'naver': 'Naver Map', 'amap': '高德地圖' }; return map[setup.value.mapProvider] || '地圖'; });
 
@@ -367,17 +366,38 @@ createApp({
         // 記帳：快速新增保留內聯表單；既有支出點列開彈窗編輯
         const itemInputRef = ref(null);
         const isItemInvalid = ref(false);
-        const addExpense = () => {
+        // 每筆支出各自記錄當下的即時匯率（rate），不再共用單一可調匯率
+        const expRate = (exp) => exp.rate || exchangeRate.value;
+        const expTwd = (exp) => Math.round(exp.amount * expRate(exp));
+        const totalExpenseTwd = computed(() => expenses.value.reduce((sum, e) => sum + e.amount * expRate(e), 0));
+        const fetchLiveRate = async (currency) => {
+            if (!currency || currency === 'TWD') return 1;
+            try {
+                const rRes = await fetch(`https://api.exchangerate-api.com/v4/latest/${currency}`);
+                const rData = await rRes.json();
+                if (rData?.rates?.TWD) return rData.rates.TWD;
+            } catch (e) { }
+            return exchangeRate.value;
+        };
+        const addExpense = async () => {
             if (!newExpense.value.item) { isItemInvalid.value = true; nextTick(() => { itemInputRef.value?.focus(); }); return; }
             if (!newExpense.value.amount) { isAmountInvalid.value = true; nextTick(() => { amountInputRef.value?.focus(); }); return; }
-            expenses.value.unshift({ ...newExpense.value, id: generateId(), date: newExpense.value.date || localDateStr() });
+            const rate = await fetchLiveRate(setup.value.currency);
+            expenses.value.unshift({ ...newExpense.value, id: generateId(), date: newExpense.value.date || localDateStr(), rate });
             newExpense.value.item = ''; newExpense.value.amount = ''; newExpense.value.date = localDateStr(); isItemInvalid.value = false; isAmountInvalid.value = false;
         };
         const expModal = reactive({ show: false, targetId: null, draft: null });
         const openExpModal = (exp) => {
             expModal.targetId = exp.id;
             expModal.draft = JSON.parse(JSON.stringify(exp));
+            if (!expModal.draft.rate) expModal.draft.rate = exchangeRate.value;
             expModal.show = true;
+        };
+        // 直接編輯換算後的台幣金額時，反推修正這筆支出的匯率（外幣金額不變）
+        const updateExpModalTwd = (val) => {
+            const twd = parseFloat(val);
+            if (!expModal.draft || !expModal.draft.amount || isNaN(twd)) return;
+            expModal.draft.rate = twd / expModal.draft.amount;
         };
         const saveExpModal = () => {
             const target = expenses.value.find(e => e.id === expModal.targetId);
@@ -391,7 +411,6 @@ createApp({
             const removed = expenses.value.splice(idx, 1)[0];
             showToast('已刪除支出', { icon: 'ph-bold ph-trash', undo: () => { expenses.value.splice(Math.min(idx, expenses.value.length), 0, removed); } });
         };
-        const updateExchangeRate = () => { if (setup.value) setup.value.rate = exchangeRate.value; };
 
         const getExternalMapLink = (loc) => { if (!loc) return '#'; if (isUrl(loc)) return loc; const encodedLoc = encodeURIComponent(loc); if (setup.value.mapProvider === 'naver') return `https://map.naver.com/v5/search/${encodedLoc}`; else if (setup.value.mapProvider === 'amap') return `https://www.amap.com/search?query=${encodedLoc}`; else return `https://www.google.com/maps/search/?api=1&query=${encodedLoc}`; };
         const countryInfoMap = { 'jp': { c: 'JPY', l: 'ja', n: '日文', m: 'google' }, 'kr': { c: 'KRW', l: 'ko', n: '韓文', m: 'naver' }, 'us': { c: 'USD', l: 'en', n: '英文', m: 'google' }, 'cn': { c: 'CNY', l: 'zh-CN', n: '簡中', m: 'amap' }, 'th': { c: 'THB', l: 'th', n: '泰文', m: 'google' }, 'tw': { c: 'TWD', l: 'zh-TW', n: '中文', m: 'google' } };
@@ -941,9 +960,10 @@ createApp({
             newParticipant, addParticipant, removeParticipant,
             paymentMethods, paymentMethodsStr, updatePaymentMethods,
             newPaymentMethod, addPaymentMethod, removePaymentMethod,
-            updateExchangeRate, localDateStr, fmtExpDate,
+            localDateStr, fmtExpDate,
+            expRate, expTwd, totalExpenseTwd, updateExpModalTwd,
             weather, getTimePeriod,
-            showSetupModal, setup, initTrip, weatherDisplay, detectRate, isRateLoading, currencyLabel, currencySymbol, toggleFlightCard, getDotColor,
+            showSetupModal, setup, initTrip, weatherDisplay, detectRate, isRateLoading, currencySymbol, toggleFlightCard, getDotColor,
             showTripMenu, tripList, createNewTrip, switchTrip, archiveTrip, currentTripId,
             allTrips, allTripsStatus, showArchivedTrips, loadAllTrips, otherTrips, archivedTrips, adoptTrip, unarchiveTrip,
             openEditModal, cancelSetupModal, isEditing, mapProviderLabel, amountInputRef, isAmountInvalid, itemInputRef, isItemInvalid, isUrl,
