@@ -247,6 +247,25 @@ createApp({
             itemModal.show = true;
             if (!item) nextTick(() => { document.querySelector('.js-item-activity')?.focus(); });
         };
+        // 時間欄位改用 24 小時制的時/分下拉，避免原生 time input 受裝置語系影響顯示上下午
+        const itemTimeHour = computed({
+            get: () => (itemModal.draft?.time || '').split(':')[0] || '',
+            set: (h) => {
+                if (!itemModal.draft) return;
+                if (!h) { itemModal.draft.time = ''; return; }
+                const m = (itemModal.draft.time || '').split(':')[1] || '00';
+                itemModal.draft.time = `${h}:${m}`;
+            }
+        });
+        const itemTimeMinute = computed({
+            get: () => (itemModal.draft?.time || '').split(':')[1] || '',
+            set: (m) => {
+                if (!itemModal.draft) return;
+                if (!m) { itemModal.draft.time = ''; return; }
+                const h = (itemModal.draft.time || '').split(':')[0] || '00';
+                itemModal.draft.time = `${h}:${m}`;
+            }
+        });
         const saveItemModal = () => {
             const day = days.value[currentDayIdx.value];
             if (!day) { itemModal.show = false; return; }
@@ -1040,7 +1059,7 @@ createApp({
             shareTrip, showShareModal,
             showJoinInput, joinTripUrl, joinTrip,
             dialog, dialogAnswer, toast, undoToast,
-            itemModal, openItemModal, saveItemModal, deleteItemFromModal,
+            itemModal, openItemModal, saveItemModal, deleteItemFromModal, itemTimeHour, itemTimeMinute,
             locModal, openLocModal, saveLocModal, deleteLocFromModal,
             expModal, openExpModal, saveExpModal, deleteExpFromModal,
             checklist, collapsedCats, toggleCat, checklistMembers, memberLabel, toggleCheck,
