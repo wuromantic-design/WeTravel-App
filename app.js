@@ -116,6 +116,33 @@ createApp({
             paymentMethods.value = paymentMethods.value.filter(m => m.name !== name);
             if (newExpense.value.method === name) newExpense.value.method = '';
         };
+        const pmModal = reactive({ show: false, index: null, draft: null });
+        const openPmModal = (idx) => {
+            pmModal.index = idx;
+            pmModal.draft = JSON.parse(JSON.stringify(paymentMethods.value[idx]));
+            if (pmModal.draft.limit == null) pmModal.draft.limit = '';
+            pmModal.show = true;
+        };
+        const savePmModal = () => {
+            if (pmModal.index === null || !pmModal.draft) return;
+            const name = pmModal.draft.name.trim();
+            if (!name) return;
+            const limit = pmModal.draft.limit !== '' && pmModal.draft.limit != null ? Number(pmModal.draft.limit) : null;
+            const oldName = paymentMethods.value[pmModal.index].name;
+            paymentMethods.value[pmModal.index] = { name, limit, note: pmModal.draft.note || '' };
+            if (oldName !== name) {
+                if (newExpense.value.method === oldName) newExpense.value.method = name;
+                expenses.value.forEach(e => { if (e.method === oldName) e.method = name; });
+            }
+            pmModal.show = false;
+        };
+        const deletePmFromModal = () => {
+            if (pmModal.index === null) return;
+            const name = paymentMethods.value[pmModal.index].name;
+            paymentMethods.value.splice(pmModal.index, 1);
+            if (newExpense.value.method === name) newExpense.value.method = '';
+            pmModal.show = false;
+        };
         const currencySymbol = computed(() => { const map = { 'JPY': '¥', 'CNY': '¥', 'USD': '$', 'EUR': '€', 'KRW': '₩', 'GBP': '£', 'TWD': 'NT', 'HKD': 'HK$', 'THB': '฿', 'VND': '₫' }; return map[setup.value.currency] || '$'; });
         const mapProviderLabel = computed(() => { const map = { 'google': 'Google Maps', 'naver': 'Naver Map', 'amap': '高德地圖' }; return map[setup.value.mapProvider] || '地圖'; });
 
@@ -991,6 +1018,7 @@ createApp({
             newParticipant, addParticipant, removeParticipant,
             paymentMethods, paymentMethodTotals,
             showPaymentMethods, newPaymentMethod, newPaymentMethodLimit, addPaymentMethod, removePaymentMethod,
+            pmModal, openPmModal, savePmModal, deletePmFromModal,
             localDateStr, fmtExpDate,
             expRate, expTwd, totalExpenseTwd, updateExpModalTwd, showPaymentStats,
             weather, getTimePeriod,

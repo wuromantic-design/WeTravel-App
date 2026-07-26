@@ -754,7 +754,7 @@
                             <div class="text-teal-100 text-xs font-bold tracking-widest uppercase mb-1">Total
                                 Expense
                             </div>
-                            <div class="text-4xl font-black font-mono tracking-tight">{{ currencySymbol }} {{
+                            <div class="text-2xl font-black font-mono tracking-tight text-primary-100">{{ currencySymbol }} {{
                                 totalExpense.toLocaleString() }}</div>
                             <div
                                 class="text-sm font-medium text-teal-100 mt-2 flex items-center gap-1 bg-white/10 w-fit px-2 py-1 rounded-lg backdrop-blur-sm">
@@ -771,7 +771,7 @@
                             <span class="text-[10px] text-stone-500 pl-1 uppercase tracking-wider font-bold">付款方式統計</span>
                             <i class="ph-bold text-stone-400" :class="showPaymentStats ? 'ph-caret-up' : 'ph-caret-down'"></i>
                         </button>
-                        <div v-show="showPaymentStats" class="grid grid-cols-2 gap-3 mt-2">
+                        <div v-show="showPaymentStats" class="space-y-2 mt-2">
                             <div v-for="pm in paymentMethodTotals" :key="pm.name"
                                 class="bg-stone-50 rounded-2xl px-3 py-2.5 border border-stone-100 min-w-0">
                                 <div class="flex items-center justify-between gap-2">
@@ -779,7 +779,7 @@
                                     <span class="font-mono font-bold text-xs shrink-0" :class="pm.overLimit ? 'text-red-600' : 'text-stone-600'">{{
                                         currencySymbol }}{{ Math.round(pm.amount).toLocaleString() }}</span>
                                 </div>
-                                <div class="text-[8px] mt-0.5 leading-tight break-all" :class="pm.overLimit ? 'text-red-500 font-bold' : 'text-stone-400'">
+                                <div class="text-[8px] mt-0.5 leading-tight" :class="pm.overLimit ? 'text-red-500 font-bold' : 'text-stone-400'">
                                     ≈NT{{ Math.round(pm.twd).toLocaleString() }}<span v-if="pm.limit">/UP{{ pm.limit.toLocaleString() }}</span>
                                 </div>
                             </div>
@@ -1149,15 +1149,20 @@
                             </div>
 
                             <div v-show="showPaymentMethods && paymentMethods.length"
-                                class="relative z-10 flex flex-wrap gap-2 mt-4 pt-4 border-t border-stone-100">
-                                <span v-for="m in paymentMethods" :key="m.name"
-                                    class="inline-flex items-center gap-1.5 bg-stone-100 rounded-full pl-3 pr-1.5 py-1.5 text-sm font-bold text-stone-700">
-                                    {{ m.name }}<span v-if="m.limit" class="text-stone-400 font-normal">・上限NT{{ m.limit.toLocaleString() }}</span>
-                                    <button @click="removePaymentMethod(m.name)"
-                                        class="w-5 h-5 flex items-center justify-center rounded-full text-stone-400 hover:bg-stone-300 hover:text-white transition">
-                                        <i class="ph-bold ph-x text-xs"></i>
-                                    </button>
-                                </span>
+                                class="relative z-10 flex flex-col gap-2 mt-4 pt-4 border-t border-stone-100">
+                                <div v-for="(m, idx) in paymentMethods" :key="m.name" @click="openPmModal(idx)"
+                                    class="flex items-center justify-between gap-2 bg-stone-50 rounded-2xl px-3 py-2.5 border border-stone-100 min-w-0 cursor-pointer hover:border-primary-200 hover:bg-white transition">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="font-bold text-sm text-stone-700">{{ m.name }}</span>
+                                            <span v-if="m.limit" class="text-xs text-stone-400">上限NT{{ m.limit.toLocaleString() }}</span>
+                                        </div>
+                                        <div v-if="m.note" class="flex items-center gap-1 text-xs text-stone-400 mt-1 min-w-0">
+                                            <i class="ph-bold ph-notebook shrink-0"></i><span class="truncate">{{ m.note }}</span>
+                                        </div>
+                                    </div>
+                                    <i class="ph-bold ph-pencil-simple text-stone-300 shrink-0"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1252,17 +1257,17 @@
                             :class="currentTripId === trip.id ? 'border-transparent text-white shadow-lg' : 'bg-white border-stone-100 hover:border-primary-200 hover:shadow-md'">
                             <img v-if="currentTripId === trip.id" src="assets/kitty_pilot.png"
                                 class="absolute inset-0 w-full h-full object-cover pointer-events-none z-0" alt="">
-                            <div class="relative z-10">
-                                <div class="font-bold text-lg"
+                            <div class="relative z-10 pr-20">
+                                <div class="font-bold text-lg truncate"
                                     :class="currentTripId === trip.id ? 'text-white' : 'text-stone-800'">{{
                                     trip.destination
                                     || '未命名行程' }}</div>
-                                <div class="text-xs mt-1 font-medium"
+                                <div class="text-xs mt-1 font-medium truncate"
                                     :class="currentTripId === trip.id ? 'text-white/70' : 'text-stone-500'">{{
                                     trip.startDate }} • {{ trip.daysCount }} 天</div>
                             </div>
                             <div
-                                class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition z-10">
+                                class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
                                 <button @click.stop="editTripFromMenu(trip.id)" aria-label="編輯旅程"
                                     class="w-8 h-8 flex items-center justify-center rounded-lg bg-white/90 text-primary-500 shadow-sm hover:bg-white hover:text-primary-600 transition"><i
                                         class="ph-bold ph-pencil-simple"></i></button>
@@ -1691,6 +1696,48 @@
             </div>
         </transition>
 
+        <!-- ===== 付款方式編輯彈窗 ===== -->
+        <transition name="sheet">
+            <div v-if="pmModal.show" class="sheet-host absolute inset-x-0 top-0 z-[70] flex items-end justify-center">
+                <div class="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" @click="pmModal.show = false"></div>
+                <div class="sheet-panel relative z-10 w-full bg-white rounded-t-[2rem] shadow-2xl max-h-[85%] overflow-y-auto hide-scroll"
+                    style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom))">
+                    <div class="sticky top-0 bg-white/95 backdrop-blur-sm px-5 pt-4 pb-3 border-b border-stone-100 z-10">
+                        <div class="w-10 h-1 bg-stone-200 rounded-full mx-auto mb-3"></div>
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-black text-stone-800">編輯付款方式</h3>
+                            <button @click="pmModal.show = false" aria-label="取消並關閉"
+                                class="w-9 h-9 rounded-full bg-stone-100 text-stone-500 flex items-center justify-center hover:bg-stone-200 transition">
+                                <i class="ph-bold ph-x"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="pmModal.draft" class="p-5 space-y-4">
+                        <input v-model="pmModal.draft.name" placeholder="名稱"
+                            class="w-full bg-stone-50 border-none rounded-xl text-base font-bold text-stone-700 py-2.5 px-3 focus:ring-2 focus:ring-primary-200">
+                        <input v-model.number="pmModal.draft.limit" type="number" inputmode="decimal"
+                            placeholder="上限NT(選填)"
+                            class="w-full bg-stone-50 border-none rounded-xl text-base font-bold text-stone-700 py-2.5 px-3 focus:ring-2 focus:ring-primary-200">
+                        <textarea v-model="pmModal.draft.note" rows="2"
+                            class="w-full text-sm text-stone-500 bg-stone-50 rounded-xl px-3 py-2.5 border-none focus:ring-2 focus:ring-primary-100 placeholder:text-stone-300 resize-none leading-relaxed"
+                            placeholder="備註..."></textarea>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-stone-50">
+                            <button @click="deletePmFromModal"
+                                class="text-red-400 hover:text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                                <i class="ph-bold ph-trash"></i> 刪除
+                            </button>
+                            <button @click="savePmModal"
+                                class="bg-primary-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-md shadow-primary-200 hover:bg-primary-700 transition active:scale-95 flex items-center gap-2">
+                                <i class="ph-bold ph-check"></i> 儲存
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
         <!-- ===== 清單項目編輯彈窗 ===== -->
         <transition name="sheet">
             <div v-if="checkModal.show" class="sheet-host absolute inset-x-0 top-0 z-[70] flex items-end justify-center">
@@ -1878,7 +1925,7 @@
         })();
     </script>
 
-    <script type="module" src="./app.js?v=52"></script>
+    <script type="module" src="./app.js?v=53"></script>
 
     <script>
         setTimeout(() => {
