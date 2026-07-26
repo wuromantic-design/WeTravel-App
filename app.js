@@ -140,6 +140,7 @@ createApp({
 
         const generateId = () => 'item_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
         const localDateStr = (dt = new Date()) => { const m = dt.getMonth() + 1, d = dt.getDate(); return `${dt.getFullYear()}-${m < 10 ? '0' + m : m}-${d < 10 ? '0' + d : d}`; };
+        newExpense.value.date = localDateStr();
         const fmtExpDate = (s) => { if (!s) return ''; const p = String(s).split('-'); return p.length === 3 ? `${p[1]}/${p[2]}` : s; };
         const getWeatherIcon = (c) => { if (c === 0) return 'ph-sun'; if (c < 4) return 'ph-cloud-sun'; if (c < 50) return 'ph-cloud-fog'; if (c < 70) return 'ph-cloud-rain'; return 'ph-cloud'; };
         const getTimePeriod = (t) => { if (!t) return '時間'; const h = parseInt(t.split(':')[0]); return h < 5 ? '凌晨' : h < 11 ? '上午' : h < 14 ? '中午' : h < 18 ? '下午' : '晚上'; };
@@ -369,8 +370,8 @@ createApp({
         const addExpense = () => {
             if (!newExpense.value.item) { isItemInvalid.value = true; nextTick(() => { itemInputRef.value?.focus(); }); return; }
             if (!newExpense.value.amount) { isAmountInvalid.value = true; nextTick(() => { amountInputRef.value?.focus(); }); return; }
-            expenses.value.unshift({ ...newExpense.value, id: generateId(), date: localDateStr() });
-            newExpense.value.item = ''; newExpense.value.amount = ''; isItemInvalid.value = false; isAmountInvalid.value = false;
+            expenses.value.unshift({ ...newExpense.value, id: generateId(), date: newExpense.value.date || localDateStr() });
+            newExpense.value.item = ''; newExpense.value.amount = ''; newExpense.value.date = localDateStr(); isItemInvalid.value = false; isAmountInvalid.value = false;
         };
         const expModal = reactive({ show: false, targetId: null, draft: null });
         const openExpModal = (exp) => {
@@ -480,6 +481,7 @@ createApp({
             paymentMethods.value = [];
             newExpense.value.payer = '';
             newExpense.value.method = '';
+            newExpense.value.date = localDateStr();
             isRateLoading.value = false;
             nextTick(() => ignoreRemoteUpdate = false);
         };
