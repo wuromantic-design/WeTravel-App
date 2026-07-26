@@ -503,7 +503,8 @@ createApp({
                 allTripsStatus.value = 'error';
             }
         };
-        const otherTrips = computed(() => allTrips.value.filter(t => !t.archived && !tripList.value.some(m => m.id === t.id)));
+        // 我的旅程／所有旅程已合併為單一清單：顯示伺服器全量中尚未封存的旅程（allTrips 本身已依日期排序）
+        const visibleTrips = computed(() => allTrips.value.filter(t => !t.archived));
         const archivedTrips = computed(() => allTrips.value.filter(t => t.archived));
         // 點卡片＝加入我的旅程並開啟
         const adoptTrip = (t) => {
@@ -599,13 +600,14 @@ createApp({
             showSetupModal.value = false;
         };
 
-        // 我的旅程清單：直接編輯清單中任一旅程（非目前旅程時，先切換過去等資料載入完成再開編輯視窗）
+        // 旅程清單：直接編輯清單中任一旅程（非目前旅程時，先切換過去等資料載入完成再開編輯視窗）
         const editTripFromMenu = (id) => {
             if (currentTripId.value === id && !isDataLoading.value) {
                 openEditModal();
                 return;
             }
-            switchTrip(id);
+            const t = allTrips.value.find(x => x.id === id);
+            if (t) adoptTrip(t); else switchTrip(id);
             if (!db) { nextTick(() => openEditModal()); return; }
             const stopWatch = watch(isDataLoading, (loading) => {
                 if (!loading) { stopWatch(); nextTick(() => openEditModal()); }
@@ -1024,7 +1026,7 @@ createApp({
             weather, getTimePeriod,
             showSetupModal, setup, initTrip, weatherDisplay, detectRate, isRateLoading, currencySymbol, toggleFlightCard, getDotColor,
             showTripMenu, tripList, createNewTrip, switchTrip, archiveTrip, currentTripId,
-            allTrips, allTripsStatus, showArchivedTrips, loadAllTrips, otherTrips, archivedTrips, adoptTrip, unarchiveTrip,
+            allTrips, allTripsStatus, showArchivedTrips, loadAllTrips, visibleTrips, archivedTrips, adoptTrip, unarchiveTrip,
             openEditModal, cancelSetupModal, editTripFromMenu, isEditing, mapProviderLabel, amountInputRef, isAmountInvalid, itemInputRef, isItemInvalid, isUrl,
             editingState,
             savedLocations,
