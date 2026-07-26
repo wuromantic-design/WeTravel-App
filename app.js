@@ -57,13 +57,27 @@ createApp({
         const collapsedCats = reactive({});
         const participants = ref([]);
         const participantsStr = ref('');
+        const paymentMethods = ref([]);
+        const paymentMethodsStr = ref('');
         const exchangeRate = ref(0.215);
-        const newExpense = ref({ item: '', amount: '', payer: '' });
+        const newExpense = ref({ item: '', amount: '', payer: '', method: '' });
 
         const isRateLoading = ref(false);
         const weather = ref({ temp: null, icon: 'ph-sun', code: 0, location: '', daily: [] });
         const isWeatherEditing = ref(false);
-        const setup = ref({ destination: '', startDate: new Date().toISOString().split('T')[0], days: 5, rate: 1, currency: 'TWD', langCode: 'zh-TW', langName: '中文', mapProvider: 'google' });
+
+        const addDaysStr = (dateStr, n) => { const [y, m, d] = dateStr.split('-').map(Number); const dt = new Date(y, m - 1, d); dt.setDate(dt.getDate() + n); const yyyy = dt.getFullYear(); const mm = dt.getMonth() + 1; const dd = dt.getDate(); return `${yyyy}-${mm < 10 ? '0' + mm : mm}-${dd < 10 ? '0' + dd : dd}`; };
+        const daysBetweenInclusive = (startStr, endStr) => { const [sy, sm, sd] = startStr.split('-').map(Number); const [ey, em, ed] = endStr.split('-').map(Number); const start = new Date(sy, sm - 1, sd); const end = new Date(ey, em - 1, ed); return Math.round((end - start) / 86400000) + 1; };
+
+        const setup = ref({ destination: '', startDate: new Date().toISOString().split('T')[0], endDate: addDaysStr(new Date().toISOString().split('T')[0], 4), days: 5, rate: 1, currency: 'TWD', langCode: 'zh-TW', langName: '中文', mapProvider: 'google' });
+
+        watch(() => [setup.value.startDate, setup.value.endDate], ([startDate, endDate]) => {
+            if (!startDate || !endDate) return;
+            const count = daysBetweenInclusive(startDate, endDate);
+            if (count < 1) { setup.value.endDate = startDate; setup.value.days = 1; }
+            else if (count > 30) { setup.value.endDate = addDaysStr(startDate, 29); setup.value.days = 30; }
+            else { setup.value.days = count; }
+        });
 
         const currentDay = computed(() => days.value[currentDayIdx.value] || { items: [], flight: null, date: '', title: '' });
         const totalExpense = computed(() => expenses.value.reduce((sum, item) => sum + item.amount, 0));
@@ -86,6 +100,22 @@ createApp({
             participantsStr.value = participants.value.join(', ');
             if (newExpense.value.payer === name) newExpense.value.payer = participants.value[0] || '';
         };
+
+        // 付款方式新增/刪除（同步 paymentMethodsStr 供存檔；paymentMethods 為顯示來源）
+        const newPaymentMethod = ref('');
+        const addPaymentMethod = () => {
+            const name = newPaymentMethod.value.trim();
+            if (!name || paymentMethods.value.includes(name)) { newPaymentMethod.value = ''; return; }
+            paymentMethods.value.push(name);
+            paymentMethodsStr.value = paymentMethods.value.join(', ');
+            newPaymentMethod.value = '';
+        };
+        const removePaymentMethod = (name) => {
+            paymentMethods.value = paymentMethods.value.filter(m => m !== name);
+            paymentMethodsStr.value = paymentMethods.value.join(', ');
+            if (newExpense.value.method === name) newExpense.value.method = '';
+        };
+        const updatePaymentMethods = () => { paymentMethods.value = paymentMethodsStr.value.split(',').map(s => s.trim()).filter(s => s); };
         const currencyLabel = computed(() => setup.value.currency || '外幣');
         const currencySymbol = computed(() => { const map = { 'JPY': '¥', 'CNY': '¥', 'USD': '$', 'EUR': '€', 'KRW': '₩', 'GBP': '£', 'TWD': 'NT$', 'HKD': 'HK$', 'THB': '฿', 'VND': '₫' }; return map[setup.value.currency] || '$'; });
         const mapProviderLabel = computed(() => { const map = { 'google': 'Google Maps', 'naver': 'Naver Map', 'amap': '高德地圖' }; return map[setup.value.mapProvider] || '地圖'; });
@@ -191,6 +221,7 @@ createApp({
         const saveItemModal = () => {
             const day = days.value[currentDayIdx.value];
             if (!day) { itemModal.show = false; return; }
+            itemModal.draft.location = itemModal.draft.activity;
             if (itemModal.mode === 'edit') {
                 const target = day.items.find(i => i.id === itemModal.targetId);
                 if (target) Object.assign(target, itemModal.draft);
@@ -441,11 +472,14 @@ createApp({
             isEditing.value = false;
             showSetupModal.value = true;
             showTripMenu.value = false;
-            setup.value = { destination: '', startDate: new Date().toISOString().split('T')[0], days: 5, rate: 1, currency: 'TWD', langCode: 'zh-TW', langName: '中文', mapProvider: 'google' };
+            setup.value = { destination: '', startDate: new Date().toISOString().split('T')[0], endDate: addDaysStr(new Date().toISOString().split('T')[0], 4), days: 5, rate: 1, currency: 'TWD', langCode: 'zh-TW', langName: '中文', mapProvider: 'google' };
             weather.value.location = '';
             participantsStr.value = '';
             participants.value = [];
+            paymentMethodsStr.value = '';
+            paymentMethods.value = [];
             newExpense.value.payer = '';
+            newExpense.value.method = '';
             isRateLoading.value = false;
             nextTick(() => ignoreRemoteUpdate = false);
         };
@@ -485,6 +519,8 @@ createApp({
             if (currentTrip) setup.value.destination = currentTrip.destination;
             setup.value.days = days.value.length;
             if (days.value.length > 0 && days.value[0].fullDate) setup.value.startDate = days.value[0].fullDate;
+            const lastDay = days.value[days.value.length - 1];
+            setup.value.endDate = (lastDay && lastDay.fullDate) ? lastDay.fullDate : addDaysStr(setup.value.startDate, Math.max(days.value.length - 1, 0));
             setupSnapshot = JSON.parse(JSON.stringify(setup.value));
             isRateLoading.value = false;
             isEditing.value = true; showSetupModal.value = true;
@@ -719,7 +755,7 @@ createApp({
                     }
 
                     // Prevent setup leakage from previous trip
-                    const defaultSetup = { destination: '', startDate: new Date().toISOString().split('T')[0], days: 5, rate: 1, currency: 'TWD', langCode: 'zh-TW', langName: '中文', mapProvider: 'google' };
+                    const defaultSetup = { destination: '', startDate: new Date().toISOString().split('T')[0], endDate: addDaysStr(new Date().toISOString().split('T')[0], 4), days: 5, rate: 1, currency: 'TWD', langCode: 'zh-TW', langName: '中文', mapProvider: 'google' };
                     setup.value = data.setup || defaultSetup;
 
                     if (data.rate) exchangeRate.value = data.rate;
@@ -730,6 +766,14 @@ createApp({
                     }
                     updateParticipants();
                     if (!participants.value.includes(newExpense.value.payer)) newExpense.value.payer = participants.value[0] || '';
+
+                    if (data.payment_methods) {
+                        paymentMethodsStr.value = data.payment_methods;
+                    } else {
+                        paymentMethodsStr.value = '';
+                    }
+                    updatePaymentMethods();
+                    if (!paymentMethods.value.includes(newExpense.value.method)) newExpense.value.method = '';
 
                     if (data.weather_loc) {
                         if (weather.value) weather.value.location = data.weather_loc;
@@ -795,6 +839,7 @@ createApp({
                         checklist: JSON.parse(JSON.stringify(checklist.value)),
                         rate: exchangeRate.value,
                         users: participantsStr.value,
+                        payment_methods: paymentMethodsStr.value,
                         setup: setup.value,
                         weather_loc: weather.value.location,
                         lastUpdated: new Date().toISOString()
@@ -812,7 +857,7 @@ createApp({
             }, 1000);
         };
 
-        watch([days, expenses, savedLocations, checklist, exchangeRate, participantsStr, setup], () => {
+        watch([days, expenses, savedLocations, checklist, exchangeRate, participantsStr, paymentMethodsStr, setup], () => {
             if (!ignoreRemoteUpdate && !(showSetupModal.value && !isEditing.value)) debouncedSave();
         }, { deep: true });
 
@@ -892,6 +937,8 @@ createApp({
             expenses, newExpense, totalExpense, addExpense,
             paidByPerson, exchangeRate,
             newParticipant, addParticipant, removeParticipant,
+            paymentMethods, paymentMethodsStr, updatePaymentMethods,
+            newPaymentMethod, addPaymentMethod, removePaymentMethod,
             updateExchangeRate, localDateStr, fmtExpDate,
             weather, getTimePeriod,
             showSetupModal, setup, initTrip, weatherDisplay, detectRate, isRateLoading, currencyLabel, currencySymbol, toggleFlightCard, getDotColor,
