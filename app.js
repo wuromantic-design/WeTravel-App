@@ -57,8 +57,7 @@ createApp({
         const collapsedCats = reactive({});
         const participants = ref([]);
         const participantsStr = ref('');
-        const paymentMethods = ref([]);
-        const paymentMethodsStr = ref('');
+        const paymentMethods = ref([]); // [{ name, limit }]，limit 為 NT$ 上限，null 表示不限制
         const exchangeRate = ref(0.215);
         const newExpense = ref({ item: '', amount: '', payer: '', method: '' });
 
@@ -101,21 +100,21 @@ createApp({
             if (newExpense.value.payer === name) newExpense.value.payer = participants.value[0] || '';
         };
 
-        // 付款方式新增/刪除（同步 paymentMethodsStr 供存檔；paymentMethods 為顯示來源）
+        // 付款方式新增/刪除（每個付款方式各自存 name + 上限金額 limit，皆存於 paymentMethods）
         const newPaymentMethod = ref('');
+        const newPaymentMethodLimit = ref('');
         const addPaymentMethod = () => {
             const name = newPaymentMethod.value.trim();
-            if (!name || paymentMethods.value.includes(name)) { newPaymentMethod.value = ''; return; }
-            paymentMethods.value.push(name);
-            paymentMethodsStr.value = paymentMethods.value.join(', ');
+            if (!name || paymentMethods.value.some(m => m.name === name)) { newPaymentMethod.value = ''; newPaymentMethodLimit.value = ''; return; }
+            const limit = newPaymentMethodLimit.value ? Number(newPaymentMethodLimit.value) : null;
+            paymentMethods.value.push({ name, limit });
             newPaymentMethod.value = '';
+            newPaymentMethodLimit.value = '';
         };
         const removePaymentMethod = (name) => {
-            paymentMethods.value = paymentMethods.value.filter(m => m !== name);
-            paymentMethodsStr.value = paymentMethods.value.join(', ');
+            paymentMethods.value = paymentMethods.value.filter(m => m.name !== name);
             if (newExpense.value.method === name) newExpense.value.method = '';
         };
-        const updatePaymentMethods = () => { paymentMethods.value = paymentMethodsStr.value.split(',').map(s => s.trim()).filter(s => s); };
         const currencySymbol = computed(() => { const map = { 'JPY': '¥', 'CNY': '¥', 'USD': '$', 'EUR': '€', 'KRW': '₩', 'GBP': '£', 'TWD': 'NT$', 'HKD': 'HK$', 'THB': '฿', 'VND': '₫' }; return map[setup.value.currency] || '$'; });
         const mapProviderLabel = computed(() => { const map = { 'google': 'Google Maps', 'naver': 'Naver Map', 'amap': '高德地圖' }; return map[setup.value.mapProvider] || '地圖'; });
 
@@ -370,6 +369,13 @@ createApp({
         const expRate = (exp) => exp.rate || exchangeRate.value;
         const expTwd = (exp) => Math.round(exp.amount * expRate(exp));
         const totalExpenseTwd = computed(() => expenses.value.reduce((sum, e) => sum + e.amount * expRate(e), 0));
+        // 各付款方式的花費統計（外幣＋台幣），達到上限金額（NT$）時標記 overLimit
+        const paymentMethodTotals = computed(() => paymentMethods.value.map(m => {
+            const matched = expenses.value.filter(e => e.method === m.name);
+            const amount = matched.reduce((sum, e) => sum + e.amount, 0);
+            const twd = matched.reduce((sum, e) => sum + e.amount * expRate(e), 0);
+            return { name: m.name, limit: m.limit, amount, twd, overLimit: m.limit != null && twd >= m.limit };
+        }));
         const fetchLiveRate = async (currency) => {
             if (!currency || currency === 'TWD') return 1;
             try {
@@ -496,7 +502,6 @@ createApp({
             weather.value.location = '';
             participantsStr.value = '';
             participants.value = [];
-            paymentMethodsStr.value = '';
             paymentMethods.value = [];
             newExpense.value.payer = '';
             newExpense.value.method = '';
@@ -788,13 +793,15 @@ createApp({
                     updateParticipants();
                     if (!participants.value.includes(newExpense.value.payer)) newExpense.value.payer = participants.value[0] || '';
 
-                    if (data.payment_methods) {
-                        paymentMethodsStr.value = data.payment_methods;
+                    if (Array.isArray(data.payment_methods)) {
+                        paymentMethods.value = data.payment_methods;
+                    } else if (typeof data.payment_methods === 'string' && data.payment_methods) {
+                        // 相容舊版（逗號字串）資料
+                        paymentMethods.value = data.payment_methods.split(',').map(s => s.trim()).filter(Boolean).map(name => ({ name, limit: null }));
                     } else {
-                        paymentMethodsStr.value = '';
+                        paymentMethods.value = [];
                     }
-                    updatePaymentMethods();
-                    if (!paymentMethods.value.includes(newExpense.value.method)) newExpense.value.method = '';
+                    if (!paymentMethods.value.some(m => m.name === newExpense.value.method)) newExpense.value.method = '';
 
                     if (data.weather_loc) {
                         if (weather.value) weather.value.location = data.weather_loc;
@@ -860,7 +867,7 @@ createApp({
                         checklist: JSON.parse(JSON.stringify(checklist.value)),
                         rate: exchangeRate.value,
                         users: participantsStr.value,
-                        payment_methods: paymentMethodsStr.value,
+                        payment_methods: JSON.parse(JSON.stringify(paymentMethods.value)),
                         setup: setup.value,
                         weather_loc: weather.value.location,
                         lastUpdated: new Date().toISOString()
@@ -878,7 +885,7 @@ createApp({
             }, 1000);
         };
 
-        watch([days, expenses, savedLocations, checklist, exchangeRate, participantsStr, paymentMethodsStr, setup], () => {
+        watch([days, expenses, savedLocations, checklist, exchangeRate, participantsStr, paymentMethods, setup], () => {
             if (!ignoreRemoteUpdate && !(showSetupModal.value && !isEditing.value)) debouncedSave();
         }, { deep: true });
 
@@ -958,8 +965,8 @@ createApp({
             expenses, newExpense, totalExpense, addExpense,
             paidByPerson, exchangeRate,
             newParticipant, addParticipant, removeParticipant,
-            paymentMethods, paymentMethodsStr, updatePaymentMethods,
-            newPaymentMethod, addPaymentMethod, removePaymentMethod,
+            paymentMethods, paymentMethodTotals,
+            newPaymentMethod, newPaymentMethodLimit, addPaymentMethod, removePaymentMethod,
             localDateStr, fmtExpDate,
             expRate, expTwd, totalExpenseTwd, updateExpModalTwd,
             weather, getTimePeriod,
