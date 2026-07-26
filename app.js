@@ -116,7 +116,7 @@ createApp({
             paymentMethods.value = paymentMethods.value.filter(m => m.name !== name);
             if (newExpense.value.method === name) newExpense.value.method = '';
         };
-        const currencySymbol = computed(() => { const map = { 'JPY': '¥', 'CNY': '¥', 'USD': '$', 'EUR': '€', 'KRW': '₩', 'GBP': '£', 'TWD': 'NT$', 'HKD': 'HK$', 'THB': '฿', 'VND': '₫' }; return map[setup.value.currency] || '$'; });
+        const currencySymbol = computed(() => { const map = { 'JPY': '¥', 'CNY': '¥', 'USD': '$', 'EUR': '€', 'KRW': '₩', 'GBP': '£', 'TWD': 'NT', 'HKD': 'HK$', 'THB': '฿', 'VND': '₫' }; return map[setup.value.currency] || '$'; });
         const mapProviderLabel = computed(() => { const map = { 'google': 'Google Maps', 'naver': 'Naver Map', 'amap': '高德地圖' }; return map[setup.value.mapProvider] || '地圖'; });
 
         const weatherDisplay = computed(() => {
@@ -572,6 +572,19 @@ createApp({
             showSetupModal.value = false;
         };
 
+        // 我的旅程清單：直接編輯清單中任一旅程（非目前旅程時，先切換過去等資料載入完成再開編輯視窗）
+        const editTripFromMenu = (id) => {
+            if (currentTripId.value === id && !isDataLoading.value) {
+                openEditModal();
+                return;
+            }
+            switchTrip(id);
+            if (!db) { nextTick(() => openEditModal()); return; }
+            const stopWatch = watch(isDataLoading, (loading) => {
+                if (!loading) { stopWatch(); nextTick(() => openEditModal()); }
+            });
+        };
+
         const initTrip = async () => {
             if (!setup.value.destination) { showToast('請先填寫目的地', { icon: 'ph-bold ph-warning' }); return; }
 
@@ -984,7 +997,7 @@ createApp({
             showSetupModal, setup, initTrip, weatherDisplay, detectRate, isRateLoading, currencySymbol, toggleFlightCard, getDotColor,
             showTripMenu, tripList, createNewTrip, switchTrip, archiveTrip, currentTripId,
             allTrips, allTripsStatus, showArchivedTrips, loadAllTrips, otherTrips, archivedTrips, adoptTrip, unarchiveTrip,
-            openEditModal, cancelSetupModal, isEditing, mapProviderLabel, amountInputRef, isAmountInvalid, itemInputRef, isItemInvalid, isUrl,
+            openEditModal, cancelSetupModal, editTripFromMenu, isEditing, mapProviderLabel, amountInputRef, isAmountInvalid, itemInputRef, isItemInvalid, isUrl,
             editingState,
             savedLocations,
             updateRateByCurrency,
