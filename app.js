@@ -80,6 +80,8 @@ createApp({
 
         const currentDay = computed(() => days.value[currentDayIdx.value] || { items: [], flight: null, date: '', title: '' });
         const totalExpense = computed(() => expenses.value.reduce((sum, item) => sum + item.amount, 0));
+        // 支出列表顯示順序：依日期新到舊排列（同一天則維持原本新增順序）
+        const sortedExpenses = computed(() => [...expenses.value].sort((a, b) => (b.date || '').localeCompare(a.date || '')));
         const paidByPerson = computed(() => {
             const map = {}; participants.value.forEach(p => map[p] = 0);
             expenses.value.forEach(e => { if (map[e.payer] === undefined) map[e.payer] = 0; map[e.payer] += e.amount; }); return map;
@@ -405,6 +407,7 @@ createApp({
             return { name: m.name, limit: m.limit, amount, twd, overLimit: m.limit != null && twd >= m.limit };
         }));
         const showPaymentStats = ref(false);
+        const showParticipants = ref(false);
         const fetchLiveRate = async (currency) => {
             if (!currency || currency === 'TWD') return 1;
             try {
@@ -1015,14 +1018,14 @@ createApp({
         return {
             viewMode, currentDayIdx, days, currentDay, participants, participantsStr, updateParticipants,
             getExternalMapLink, removeFlight, addDay,
-            expenses, newExpense, totalExpense, addExpense,
+            expenses, sortedExpenses, newExpense, totalExpense, addExpense,
             paidByPerson, exchangeRate,
             newParticipant, addParticipant, removeParticipant,
             paymentMethods, paymentMethodTotals,
             showPaymentMethods, newPaymentMethod, newPaymentMethodLimit, addPaymentMethod, removePaymentMethod,
             pmModal, openPmModal, savePmModal, deletePmFromModal,
             localDateStr, fmtExpDate,
-            expRate, expTwd, totalExpenseTwd, updateExpModalTwd, showPaymentStats,
+            expRate, expTwd, totalExpenseTwd, updateExpModalTwd, showPaymentStats, showParticipants,
             weather, getTimePeriod,
             showSetupModal, setup, initTrip, weatherDisplay, detectRate, isRateLoading, currencySymbol, toggleFlightCard, getDotColor,
             showTripMenu, tripList, createNewTrip, switchTrip, archiveTrip, currentTripId,
