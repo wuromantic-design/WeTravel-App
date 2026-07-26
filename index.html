@@ -790,7 +790,7 @@
                                     <span class="font-mono font-bold text-xs shrink-0" :class="pm.overLimit ? 'text-red-600' : 'text-stone-600'">{{
                                         currencySymbol }}{{ Math.round(pm.amount).toLocaleString() }}</span>
                                 </div>
-                                <div class="text-[10px] mt-0.5 truncate" :class="pm.overLimit ? 'text-red-500 font-bold' : 'text-stone-400'">
+                                <div class="text-[6px] mt-0.5 truncate" :class="pm.overLimit ? 'text-red-500 font-bold' : 'text-stone-400'">
                                     ≈NT{{ Math.round(pm.twd).toLocaleString() }}<span v-if="pm.limit">/UP{{ pm.limit.toLocaleString() }}</span>
                                 </div>
                             </div>
@@ -1881,7 +1881,7 @@
         })();
     </script>
 
-    <script type="module" src="./app.js?v=49"></script>
+    <script type="module" src="./app.js?v=50"></script>
 
     <script>
         setTimeout(() => {
