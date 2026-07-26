@@ -988,6 +988,7 @@
                                             <span class="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md border"
                                                 :class="LUGGAGE_META[item.luggage]?.cls">{{
                                                 LUGGAGE_META[item.luggage]?.label }}</span>
+                                            <i class="ph-bold ph-pencil-simple text-stone-300 shrink-0 ml-auto"></i>
                                         </div>
                                         <div v-if="item.note" class="text-sm text-stone-500 truncate mt-0.5">{{
                                             item.note }}</div>
@@ -1118,6 +1119,8 @@
                         <!-- 付款方式（自訂清單，供記帳頁選用） -->
                         <div class="w-full bg-white border border-stone-200 rounded-3xl p-6 transition-all duration-300 relative overflow-hidden"
                             style="border-color: #ff60b5; border-width: 1px;">
+                            <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 pointer-events-none"
+                                style="background-color: #F8DEEC"></div>
                             <div class="relative z-10 flex items-center gap-4">
                                 <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
                                     style="background-color: #F8DEEC">
@@ -1130,7 +1133,7 @@
                                 </div>
                                 <button @click="showPaymentMethods = !showPaymentMethods" aria-label="展開或收合付款方式清單"
                                     class="shrink-0 ml-auto">
-                                    <i class="ph-bold ph-caret-right text-stone-300 transition-transform duration-300"
+                                    <i class="ph-bold ph-caret-right transition-transform duration-300"
                                         :class="{'rotate-90': showPaymentMethods}" style="color: #ff60b5"></i>
                                 </button>
                             </div>
@@ -1905,7 +1908,7 @@
         })();
     </script>
 
-    <script type="module" src="./app.js?v=54"></script>
+    <script type="module" src="./app.js?v=55"></script>
 
     <script>
         setTimeout(() => {
