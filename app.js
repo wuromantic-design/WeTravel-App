@@ -377,6 +377,7 @@ createApp({
             const twd = matched.reduce((sum, e) => sum + e.amount * expRate(e), 0);
             return { name: m.name, limit: m.limit, amount, twd, overLimit: m.limit != null && twd >= m.limit };
         }));
+        const showPaymentStats = ref(false);
         const fetchLiveRate = async (currency) => {
             if (!currency || currency === 'TWD') return 1;
             try {
@@ -430,6 +431,10 @@ createApp({
         // 所以不能只在 nextTick 找一次——輪詢等到元素出現再掛，且防重複掛載
         const initSortable = () => { const el = document.getElementById('saved-locations-list'); if (!el) return false; if (Sortable.get && Sortable.get(el)) return true; Sortable.create(el, { animation: 150, handle: '.loc-drag-handle', ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', onEnd: (evt) => { const item = savedLocations.value.splice(evt.oldIndex, 1)[0]; savedLocations.value.splice(evt.newIndex, 0, item); } }); return true; };
         const initSortableWhenReady = () => { let tries = 0; const tryInit = () => { if (!initSortable() && ++tries < 30) setTimeout(tryInit, 100); }; nextTick(tryInit); };
+
+        // 行程項目：長按拖曳排序（桌機按住即可拖，觸控裝置需長按 250ms 才啟動，避免跟滑動捲動衝突）
+        const initItemsSortable = () => { const el = document.getElementById('day-items-list'); if (!el) return false; if (Sortable.get && Sortable.get(el)) return true; Sortable.create(el, { animation: 150, delay: 250, delayOnTouchOnly: true, touchStartThreshold: 5, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', onEnd: (evt) => { const day = days.value[currentDayIdx.value]; if (!day) return; const item = day.items.splice(evt.oldIndex, 1)[0]; day.items.splice(evt.newIndex, 0, item); } }); return true; };
+        const initItemsSortableWhenReady = () => { let tries = 0; const tryInit = () => { if (!initItemsSortable() && ++tries < 30) setTimeout(tryInit, 100); }; nextTick(tryInit); };
 
         const loadTripList = () => {
             const list = localStorage.getItem('travel_app_index');
@@ -954,7 +959,8 @@ createApp({
                 }
             });
 
-            watch(viewMode, (newVal) => { if (newVal === 'locations') { initSortableWhenReady(); } });
+            watch(viewMode, (newVal) => { if (newVal === 'locations') { initSortableWhenReady(); } else if (newVal === 'plan') { initItemsSortableWhenReady(); } });
+            initItemsSortableWhenReady(); // 預設就是 plan 分頁，watch 不會觸發，需手動掛一次
 
             // Vue 已掛載，App 外殼可見即散場啟動畫面（取代固定 2.8 秒假 splash）
             nextTick(() => { if (window.__hideSplash) window.__hideSplash(); });
@@ -969,7 +975,7 @@ createApp({
             paymentMethods, paymentMethodTotals,
             showPaymentMethods, newPaymentMethod, newPaymentMethodLimit, addPaymentMethod, removePaymentMethod,
             localDateStr, fmtExpDate,
-            expRate, expTwd, totalExpenseTwd, updateExpModalTwd,
+            expRate, expTwd, totalExpenseTwd, updateExpModalTwd, showPaymentStats,
             weather, getTimePeriod,
             showSetupModal, setup, initTrip, weatherDisplay, detectRate, isRateLoading, currencySymbol, toggleFlightCard, getDotColor,
             showTripMenu, tripList, createNewTrip, switchTrip, archiveTrip, currentTripId,
