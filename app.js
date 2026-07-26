@@ -61,6 +61,18 @@ createApp({
         const exchangeRate = ref(0.215);
         const newExpense = ref({ item: '', amount: '', payer: '', method: '' });
 
+        // 匯率換算小工具（記帳頁，純計算，不寫入任何支出資料）
+        const fxForeign = ref('');
+        const fxTwd = ref('');
+        const updateFxFromForeign = () => {
+            const n = parseFloat(fxForeign.value);
+            fxTwd.value = isNaN(n) ? '' : Math.round(n * exchangeRate.value * 100) / 100;
+        };
+        const updateFxFromTwd = () => {
+            const n = parseFloat(fxTwd.value);
+            fxForeign.value = (isNaN(n) || !exchangeRate.value) ? '' : Math.round(n / exchangeRate.value * 100) / 100;
+        };
+
         const isRateLoading = ref(false);
         const weather = ref({ temp: null, icon: 'ph-sun', code: 0, location: '', daily: [] });
         const isWeatherEditing = ref(false);
@@ -1038,7 +1050,7 @@ createApp({
             viewMode, currentDayIdx, days, currentDay, participants, participantsStr, updateParticipants,
             getExternalMapLink, removeFlight, addDay,
             expenses, sortedExpenses, newExpense, totalExpense, addExpense,
-            paidByPerson, exchangeRate,
+            paidByPerson, exchangeRate, fxForeign, fxTwd, updateFxFromForeign, updateFxFromTwd,
             newParticipant, addParticipant, removeParticipant,
             paymentMethods, paymentMethodTotals,
             showPaymentMethods, newPaymentMethod, newPaymentMethodLimit, addPaymentMethod, removePaymentMethod,
