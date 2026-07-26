@@ -101,6 +101,7 @@ createApp({
         };
 
         // 付款方式新增/刪除（每個付款方式各自存 name + 上限金額 limit，皆存於 paymentMethods）
+        const showPaymentMethods = ref(false);
         const newPaymentMethod = ref('');
         const newPaymentMethodLimit = ref('');
         const addPaymentMethod = () => {
@@ -966,7 +967,7 @@ createApp({
             paidByPerson, exchangeRate,
             newParticipant, addParticipant, removeParticipant,
             paymentMethods, paymentMethodTotals,
-            newPaymentMethod, newPaymentMethodLimit, addPaymentMethod, removePaymentMethod,
+            showPaymentMethods, newPaymentMethod, newPaymentMethodLimit, addPaymentMethod, removePaymentMethod,
             localDateStr, fmtExpDate,
             expRate, expTwd, totalExpenseTwd, updateExpModalTwd,
             weather, getTimePeriod,
