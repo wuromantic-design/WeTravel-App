@@ -492,6 +492,26 @@
                                 1 }}</span>
                             {{ currentDay.date || '未設定日期' }}
                         </h2>
+                        <button v-if="days.length > 1" @click="showDaySwap = !showDaySwap" aria-label="與其他天對調"
+                            class="w-9 h-9 rounded-full flex items-center justify-center transition"
+                            :class="showDaySwap ? 'bg-primary-100 text-primary-600' : 'text-stone-400 hover:bg-stone-100'">
+                            <i class="ph-bold ph-arrows-left-right"></i>
+                        </button>
+                    </div>
+
+                    <div v-if="showDaySwap" class="flex items-center gap-2 bg-white rounded-2xl border border-stone-100 shadow-soft p-3 -mt-2">
+                        <span class="text-xs font-bold text-stone-500 shrink-0">與</span>
+                        <select v-model.number="swapTargetDay"
+                            class="flex-1 min-w-0 bg-stone-50 border-none rounded-xl text-sm font-bold text-stone-700 py-2 px-2 focus:ring-2 focus:ring-primary-200 appearance-none">
+                            <option :value="null" disabled>選擇天數</option>
+                            <option v-for="opt in otherDayOptions" :key="opt.i" :value="opt.i">第{{ opt.i + 1 }}天 {{
+                                opt.d.shortDate }}</option>
+                        </select>
+                        <span class="text-xs font-bold text-stone-500 shrink-0">對調</span>
+                        <button @click="confirmSwapDay" :disabled="swapTargetDay === null"
+                            class="px-4 py-2 bg-primary-500 text-white rounded-xl text-sm font-bold shadow-md shadow-primary-500/30 active:scale-95 transition shrink-0 disabled:opacity-40 disabled:active:scale-100">
+                            確定
+                        </button>
                     </div>
 
                     <!-- Flight Card -->
@@ -1944,7 +1964,7 @@
         })();
     </script>
 
-    <script type="module" src="./app.js?v=62"></script>
+    <script type="module" src="./app.js?v=63"></script>
 
     <script>
         setTimeout(() => {

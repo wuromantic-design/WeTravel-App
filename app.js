@@ -303,6 +303,28 @@ createApp({
 
         const addDay = () => days.value.push({ date: `Day ${days.value.length + 1}`, title: '', items: [] });
 
+        // 天數對調：只交換兩天的內容（標題/行程項目/航班），日期（date/shortDate/fullDate）留在原本的位置不動
+        const showDaySwap = ref(false);
+        const swapTargetDay = ref(null);
+        const otherDayOptions = computed(() => days.value.map((d, i) => ({ i, d })).filter(o => o.i !== currentDayIdx.value));
+        const swapDays = (idxA, idxB) => {
+            if (idxA === idxB || idxA < 0 || idxB < 0 || idxA >= days.value.length || idxB >= days.value.length) return;
+            const { date: dateA, shortDate: shortDateA, fullDate: fullDateA, ...contentA } = days.value[idxA];
+            const { date: dateB, shortDate: shortDateB, fullDate: fullDateB, ...contentB } = days.value[idxB];
+            days.value[idxA] = { date: dateA, shortDate: shortDateA, fullDate: fullDateA, ...contentB };
+            days.value[idxB] = { date: dateB, shortDate: shortDateB, fullDate: fullDateB, ...contentA };
+        };
+        const confirmSwapDay = () => {
+            if (swapTargetDay.value === null || swapTargetDay.value === currentDayIdx.value) return;
+            const from = currentDayIdx.value;
+            const to = swapTargetDay.value;
+            swapDays(from, to);
+            showDaySwap.value = false;
+            swapTargetDay.value = null;
+            showToast(`已將第${from + 1}天與第${to + 1}天對調`, { icon: 'ph-bold ph-arrows-left-right', undo: () => swapDays(from, to) });
+        };
+        watch(currentDayIdx, () => { showDaySwap.value = false; swapTargetDay.value = null; });
+
         // 口袋名單彈窗
         const locModal = reactive({ show: false, mode: 'add', targetId: null, draft: null });
         const openLocModal = (loc = null) => {
@@ -1049,6 +1071,7 @@ createApp({
         return {
             viewMode, currentDayIdx, days, currentDay, participants, participantsStr, updateParticipants,
             getExternalMapLink, removeFlight, addDay,
+            showDaySwap, swapTargetDay, otherDayOptions, confirmSwapDay,
             expenses, sortedExpenses, newExpense, totalExpense, addExpense,
             paidByPerson, exchangeRate, fxForeign, fxTwd, updateFxFromForeign, updateFxFromTwd,
             newParticipant, addParticipant, removeParticipant,
