@@ -282,25 +282,14 @@ createApp({
             const day = days.value[currentDayIdx.value];
             if (!day) { itemModal.show = false; return; }
             itemModal.draft.location = itemModal.draft.activity;
-            let savedItem = null;
             if (itemModal.mode === 'edit') {
                 const target = day.items.find(i => i.id === itemModal.targetId);
-                if (target) {
-                    // 地點文字改過就清掉快取的座標，下次開地圖才會用新地點重查
-                    const locationChanged = target.link !== itemModal.draft.link || target.activity !== itemModal.draft.activity;
-                    Object.assign(target, itemModal.draft);
-                    if (locationChanged) { delete target.lat; delete target.lng; }
-                    savedItem = target;
-                }
+                if (target) Object.assign(target, itemModal.draft);
             } else {
-                const newItem = { ...itemModal.draft };
-                day.items.push(newItem);
-                savedItem = newItem;
+                day.items.push({ ...itemModal.draft });
             }
             sortItemsByTime(day.items); // 保留鐵則：完成編輯後依時間自動排序
             itemModal.show = false;
-            // 存檔當下就在背景先查好座標，之後開「本日地圖」大多已經快取好，不用現場等
-            if (savedItem && (savedItem.lat == null || savedItem.lng == null)) queueGeocode(savedItem);
         };
         const deleteItemFromModal = () => {
             const day = days.value[currentDayIdx.value];
@@ -311,91 +300,6 @@ createApp({
             const removed = day.items.splice(idx, 1)[0];
             showToast('已刪除行程', { icon: 'ph-bold ph-trash', undo: () => { day.items.splice(Math.min(idx, day.items.length), 0, removed); } });
         };
-
-        // 本日地圖：用免費的 Nominatim（OpenStreetMap）幫每個行程項目查一次座標，查到後存回項目本身（lat/lng）
-        // 避免重複查詢；地圖用 Leaflet + OSM 圖磚顯示，路線只是把地點依序連線，不是真實路網路線。
-        const showDayMap = ref(false);
-        const dayMapStatus = ref('idle'); // idle | loading | ready | error
-        let dayMapInstance = null;
-        const geocodeCache = {};
-        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-        const geocodeLocation = async (query) => {
-            if (!query) return null;
-            if (geocodeCache[query]) return geocodeCache[query];
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-                const data = await res.json();
-                if (data?.[0]) {
-                    const coord = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-                    geocodeCache[query] = coord;
-                    return coord;
-                }
-            } catch (e) { }
-            return null;
-        };
-        // 如果項目的連結本身就是一個 Google 地圖網址，很多時候網址裡已經藏著精確經緯度，
-        // 直接解析出來就好，不用再查 Nominatim（快、準、不佔查詢額度）
-        const extractLatLngFromUrl = (url) => {
-            if (!url) return null;
-            let m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-            return m ? { lat: parseFloat(m[1]), lng: parseFloat(m[2]) } : null;
-        };
-        // 單一項目定位：已有座標就跳過；連結能直接解析出座標就用；否則才查 Nominatim（含目的地上下文，降低查錯地方的機率）
-        const geocodeItem = async (item) => {
-            if (!item || (item.lat != null && item.lng != null)) return;
-            if (item.link && isUrl(item.link)) {
-                const fromUrl = extractLatLngFromUrl(item.link);
-                if (fromUrl) { item.lat = fromUrl.lat; item.lng = fromUrl.lng; return; }
-            }
-            const place = (item.link && !isUrl(item.link)) ? item.link : (item.location || item.activity);
-            if (!place) return;
-            const query = setup.value.destination && !place.includes(setup.value.destination)
-                ? `${place}, ${setup.value.destination}` : place;
-            const coord = await geocodeLocation(query);
-            if (coord) { item.lat = coord.lat; item.lng = coord.lng; }
-            await sleep(1100); // Nominatim 使用規範：每秒最多 1 次查詢（只有真的打了 API 才需要延遲）
-        };
-        // 所有定位查詢共用同一條佇列，確保背景預先查詢跟開地圖時的查詢不會同時發生、超過速率限制
-        let geocodeQueue = Promise.resolve();
-        const queueGeocode = (item) => {
-            geocodeQueue = geocodeQueue.then(() => geocodeItem(item)).catch(() => { });
-            return geocodeQueue;
-        };
-        const renderDayMap = async () => {
-            const day = currentDay.value;
-            const items = (day?.items || []).filter(Boolean);
-            if (!items.length) { dayMapStatus.value = 'error'; return; }
-            dayMapStatus.value = 'loading';
-            for (const item of items) {
-                if (item.lat == null || item.lng == null) await queueGeocode(item);
-            }
-            const points = items.filter((i) => i.lat != null && i.lng != null).map((item) => ({ item, lat: item.lat, lng: item.lng }));
-            if (!points.length) { dayMapStatus.value = 'error'; return; }
-            dayMapStatus.value = 'ready';
-            nextTick(() => {
-                const el = document.getElementById('day-map');
-                if (!el || typeof L === 'undefined') return;
-                if (dayMapInstance) { dayMapInstance.remove(); dayMapInstance = null; }
-                dayMapInstance = L.map(el).setView([points[0].lat, points[0].lng], 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '&copy; OpenStreetMap contributors'
-                }).addTo(dayMapInstance);
-                const latlngs = points.map((p) => [p.lat, p.lng]);
-                points.forEach((p, i) => {
-                    L.marker([p.lat, p.lng]).addTo(dayMapInstance).bindPopup(`${i + 1}. ${p.item.activity || '未命名行程'}`);
-                });
-                if (latlngs.length > 1) {
-                    L.polyline(latlngs, { color: '#ff1493', weight: 3, opacity: 0.7, dashArray: '6 6' }).addTo(dayMapInstance);
-                    dayMapInstance.fitBounds(latlngs, { padding: [30, 30] });
-                }
-            });
-        };
-        const toggleDayMap = () => {
-            showDayMap.value = !showDayMap.value;
-            if (showDayMap.value) renderDayMap();
-        };
-        watch(currentDayIdx, () => { if (showDayMap.value) renderDayMap(); });
 
         const addDay = () => days.value.push({ date: `Day ${days.value.length + 1}`, title: '', items: [] });
 
@@ -1173,7 +1077,6 @@ createApp({
         return {
             viewMode, currentDayIdx, days, currentDay, participants, participantsStr, updateParticipants,
             getExternalMapLink, removeFlight, addDay, scrollDays,
-            showDayMap, dayMapStatus, toggleDayMap,
             showDaySwap, swapTargetDay, otherDayOptions, confirmSwapDay,
             expenses, sortedExpenses, newExpense, totalExpense, addExpense,
             paidByPerson, exchangeRate, fxForeign, fxTwd, updateFxFromForeign, updateFxFromTwd,
