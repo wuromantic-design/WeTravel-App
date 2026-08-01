@@ -336,7 +336,10 @@ createApp({
             for (const item of items) {
                 let coord = (item.lat != null && item.lng != null) ? { lat: item.lat, lng: item.lng } : null;
                 if (!coord) {
-                    const query = (item.link && !isUrl(item.link)) ? item.link : (item.location || item.activity);
+                    const place = (item.link && !isUrl(item.link)) ? item.link : (item.location || item.activity);
+                    // 加上旅程目的地當上下文（例如「晴空塔, Tokyo」），避免地名太籠統查到別的地方去
+                    const query = setup.value.destination && !place.includes(setup.value.destination)
+                        ? `${place}, ${setup.value.destination}` : place;
                     coord = await geocodeLocation(query);
                     if (coord) { item.lat = coord.lat; item.lng = coord.lng; }
                     await sleep(1100); // Nominatim 使用規範：每秒最多 1 次查詢

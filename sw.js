@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wetravel-v108';
+const CACHE_NAME = 'wetravel-v109';
 const ASSETS = [
   './index.html',
   './manifest.json',
