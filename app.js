@@ -282,6 +282,7 @@ createApp({
             const day = days.value[currentDayIdx.value];
             if (!day) { itemModal.show = false; return; }
             itemModal.draft.location = itemModal.draft.activity;
+            let savedItem = null;
             if (itemModal.mode === 'edit') {
                 const target = day.items.find(i => i.id === itemModal.targetId);
                 if (target) {
@@ -289,12 +290,17 @@ createApp({
                     const locationChanged = target.link !== itemModal.draft.link || target.activity !== itemModal.draft.activity;
                     Object.assign(target, itemModal.draft);
                     if (locationChanged) { delete target.lat; delete target.lng; }
+                    savedItem = target;
                 }
             } else {
-                day.items.push({ ...itemModal.draft });
+                const newItem = { ...itemModal.draft };
+                day.items.push(newItem);
+                savedItem = newItem;
             }
             sortItemsByTime(day.items); // 保留鐵則：完成編輯後依時間自動排序
             itemModal.show = false;
+            // 存檔當下就在背景先查好座標，之後開「本日地圖」大多已經快取好，不用現場等
+            if (savedItem && (savedItem.lat == null || savedItem.lng == null)) queueGeocode(savedItem);
         };
         const deleteItemFromModal = () => {
             const day = days.value[currentDayIdx.value];
@@ -327,25 +333,43 @@ createApp({
             } catch (e) { }
             return null;
         };
+        // 如果項目的連結本身就是一個 Google 地圖網址，很多時候網址裡已經藏著精確經緯度，
+        // 直接解析出來就好，不用再查 Nominatim（快、準、不佔查詢額度）
+        const extractLatLngFromUrl = (url) => {
+            if (!url) return null;
+            let m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+            return m ? { lat: parseFloat(m[1]), lng: parseFloat(m[2]) } : null;
+        };
+        // 單一項目定位：已有座標就跳過；連結能直接解析出座標就用；否則才查 Nominatim（含目的地上下文，降低查錯地方的機率）
+        const geocodeItem = async (item) => {
+            if (!item || (item.lat != null && item.lng != null)) return;
+            if (item.link && isUrl(item.link)) {
+                const fromUrl = extractLatLngFromUrl(item.link);
+                if (fromUrl) { item.lat = fromUrl.lat; item.lng = fromUrl.lng; return; }
+            }
+            const place = (item.link && !isUrl(item.link)) ? item.link : (item.location || item.activity);
+            if (!place) return;
+            const query = setup.value.destination && !place.includes(setup.value.destination)
+                ? `${place}, ${setup.value.destination}` : place;
+            const coord = await geocodeLocation(query);
+            if (coord) { item.lat = coord.lat; item.lng = coord.lng; }
+            await sleep(1100); // Nominatim 使用規範：每秒最多 1 次查詢（只有真的打了 API 才需要延遲）
+        };
+        // 所有定位查詢共用同一條佇列，確保背景預先查詢跟開地圖時的查詢不會同時發生、超過速率限制
+        let geocodeQueue = Promise.resolve();
+        const queueGeocode = (item) => {
+            geocodeQueue = geocodeQueue.then(() => geocodeItem(item)).catch(() => { });
+            return geocodeQueue;
+        };
         const renderDayMap = async () => {
             const day = currentDay.value;
             const items = (day?.items || []).filter(Boolean);
             if (!items.length) { dayMapStatus.value = 'error'; return; }
             dayMapStatus.value = 'loading';
-            const points = [];
             for (const item of items) {
-                let coord = (item.lat != null && item.lng != null) ? { lat: item.lat, lng: item.lng } : null;
-                if (!coord) {
-                    const place = (item.link && !isUrl(item.link)) ? item.link : (item.location || item.activity);
-                    // 加上旅程目的地當上下文（例如「晴空塔, Tokyo」），避免地名太籠統查到別的地方去
-                    const query = setup.value.destination && !place.includes(setup.value.destination)
-                        ? `${place}, ${setup.value.destination}` : place;
-                    coord = await geocodeLocation(query);
-                    if (coord) { item.lat = coord.lat; item.lng = coord.lng; }
-                    await sleep(1100); // Nominatim 使用規範：每秒最多 1 次查詢
-                }
-                if (coord) points.push({ item, ...coord });
+                if (item.lat == null || item.lng == null) await queueGeocode(item);
             }
+            const points = items.filter((i) => i.lat != null && i.lng != null).map((item) => ({ item, lat: item.lat, lng: item.lng }));
             if (!points.length) { dayMapStatus.value = 'error'; return; }
             dayMapStatus.value = 'ready';
             nextTick(() => {
