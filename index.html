@@ -19,6 +19,9 @@
     <link rel="stylesheet" href="./vendor/phosphor/duotone/style.css">
     <!-- SortableJS（self-host）-->
     <script src="./vendor/sortable-1.15.6.min.js"></script>
+    <!-- Leaflet（self-host；本日地圖用，圖磚來自 OpenStreetMap）-->
+    <link rel="stylesheet" href="./vendor/leaflet-1.9.4.min.css">
+    <script src="./vendor/leaflet-1.9.4.min.js"></script>
 
     <style>
         [v-cloak] {
@@ -660,6 +663,28 @@
                                 <span class="text-sm font-bold tracking-wide">新增航班資訊</span>
                             </button>
                         </transition>
+                    </div>
+
+                    <!-- 本日地圖（預設收合；地點座標用免費 Nominatim 查一次後快取在項目上，不重複查） -->
+                    <div v-if="currentDay.items && currentDay.items.length" class="bg-white rounded-3xl border border-stone-100 shadow-soft overflow-hidden">
+                        <button @click="toggleDayMap"
+                            class="w-full flex items-center justify-between px-4 py-3.5 active:bg-stone-50 transition">
+                            <span class="flex items-center gap-2 font-black text-stone-800">
+                                <i class="ph-bold ph-map-trifold text-primary-500"></i> 本日地圖
+                            </span>
+                            <i class="ph-bold text-stone-300 transition-transform"
+                                :class="showDayMap ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </button>
+                        <div v-show="showDayMap" class="border-t border-stone-50">
+                            <div v-if="dayMapStatus === 'loading'" class="py-10 text-center text-xs text-stone-400 font-medium">
+                                <i class="ph-bold ph-spinner animate-spin text-xl text-primary-400"></i>
+                                <div class="mt-2">正在定位地點...</div>
+                            </div>
+                            <div v-if="dayMapStatus === 'error'" class="py-10 text-center text-xs text-stone-400 font-medium">
+                                找不到可定位的地點
+                            </div>
+                            <div id="day-map" v-show="dayMapStatus === 'ready'" style="height: 260px;"></div>
+                        </div>
                     </div>
 
                     <!-- Timeline Items（長按可拖曳排序） -->
@@ -1986,7 +2011,7 @@
         })();
     </script>
 
-    <script type="module" src="./app.js?v=66"></script>
+    <script type="module" src="./app.js?v=67"></script>
 
     <script>
         setTimeout(() => {

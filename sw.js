@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wetravel-v107';
+const CACHE_NAME = 'wetravel-v108';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -11,6 +11,11 @@ const ASSETS = [
   './vendor/phosphor/fill/Phosphor-Fill.woff2',
   './vendor/phosphor/duotone/style.css',
   './vendor/phosphor/duotone/Phosphor-Duotone.woff2',
+  './vendor/leaflet-1.9.4.min.js',
+  './vendor/leaflet-1.9.4.min.css',
+  './vendor/images/marker-icon.png',
+  './vendor/images/marker-icon-2x.png',
+  './vendor/images/marker-shadow.png',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap'
 ];
 
