@@ -183,6 +183,18 @@
             scrollbar-width: none;
         }
 
+        /* 日期選擇列的左右箭頭：只在有滑鼠/軌跡板（可 hover、精準指標）的桌機網頁顯示，
+           手機觸控直接滑動即可，不需要多兩顆按鈕擋畫面 */
+        .day-scroll-arrow {
+            display: none;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            .day-scroll-arrow {
+                display: flex;
+            }
+        }
+
         .fade-enter-active,
         .fade-leave-active {
             transition: opacity 0.2s ease;
@@ -460,15 +472,25 @@
             </div>
 
             <!-- Days Scroller -->
-            <div v-if="viewMode === 'plan'"
-                class="flex overflow-x-auto hide-scroll px-4 pb-3 pt-3 space-x-3 snap-x border-b border-stone-50 w-full touch-pan-x overscroll-contain">
-                <div v-for="(day, index) in days" :key="index" @click="currentDayIdx = index" :data-day-idx="index"
-                    class="snap-center shrink-0 flex flex-col items-center justify-center w-[4.5rem] h-[5rem] rounded-[1rem] cursor-pointer transition-all border-0 relative"
-                    :class="currentDayIdx === index ? 'bg-primary-300 text-white shadow-glow scale-105 with-bow' : 'bg-primary-50 text-stone-500 hover:bg-primary-100'">
-                    <span class="text-[10px] font-bold opacity-90">{{ day.shortDate }}</span>
-                    <span class="text-2xl font-black tracking-tight"
-                        :class="currentDayIdx === index ? 'text-white' : 'text-stone-700'">D{{ index + 1 }}</span>
+            <div v-if="viewMode === 'plan'" class="relative">
+                <button @click="scrollDays(-1)" aria-label="往前看更多天數"
+                    class="day-scroll-arrow absolute left-1 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-white shadow-md border border-stone-100 items-center justify-center text-stone-400 hover:text-primary-500 hover:border-primary-200 transition">
+                    <i class="ph-bold ph-caret-left text-[10px]"></i>
+                </button>
+                <div id="day-scroller"
+                    class="flex overflow-x-auto hide-scroll px-4 pb-3 pt-3 space-x-3 snap-x border-b border-stone-50 w-full touch-pan-x overscroll-contain">
+                    <div v-for="(day, index) in days" :key="index" @click="currentDayIdx = index" :data-day-idx="index"
+                        class="snap-center shrink-0 flex flex-col items-center justify-center w-[4.5rem] h-[5rem] rounded-[1rem] cursor-pointer transition-all border-0 relative"
+                        :class="currentDayIdx === index ? 'bg-primary-300 text-white shadow-glow scale-105 with-bow' : 'bg-primary-50 text-stone-500 hover:bg-primary-100'">
+                        <span class="text-[10px] font-bold opacity-90">{{ day.shortDate }}</span>
+                        <span class="text-2xl font-black tracking-tight"
+                            :class="currentDayIdx === index ? 'text-white' : 'text-stone-700'">D{{ index + 1 }}</span>
+                    </div>
                 </div>
+                <button @click="scrollDays(1)" aria-label="往後看更多天數"
+                    class="day-scroll-arrow absolute right-1 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-white shadow-md border border-stone-100 items-center justify-center text-stone-400 hover:text-primary-500 hover:border-primary-200 transition">
+                    <i class="ph-bold ph-caret-right text-[10px]"></i>
+                </button>
             </div>
         </header>
 
@@ -1964,7 +1986,7 @@
         })();
     </script>
 
-    <script type="module" src="./app.js?v=63"></script>
+    <script type="module" src="./app.js?v=66"></script>
 
     <script>
         setTimeout(() => {

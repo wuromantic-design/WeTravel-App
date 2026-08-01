@@ -303,6 +303,12 @@ createApp({
 
         const addDay = () => days.value.push({ date: `Day ${days.value.length + 1}`, title: '', items: [] });
 
+        // 桌機網頁版沒有觸控滑動，日期選擇列另外加左右箭頭捲動
+        const scrollDays = (dir) => {
+            const el = document.getElementById('day-scroller');
+            if (el) el.scrollBy({ left: dir * 200, behavior: 'smooth' });
+        };
+
         // 天數對調：只交換兩天的內容（標題/行程項目/航班），日期（date/shortDate/fullDate）留在原本的位置不動
         const showDaySwap = ref(false);
         const swapTargetDay = ref(null);
@@ -1070,7 +1076,7 @@ createApp({
 
         return {
             viewMode, currentDayIdx, days, currentDay, participants, participantsStr, updateParticipants,
-            getExternalMapLink, removeFlight, addDay,
+            getExternalMapLink, removeFlight, addDay, scrollDays,
             showDaySwap, swapTargetDay, otherDayOptions, confirmSwapDay,
             expenses, sortedExpenses, newExpense, totalExpense, addExpense,
             paidByPerson, exchangeRate, fxForeign, fxTwd, updateFxFromForeign, updateFxFromTwd,
