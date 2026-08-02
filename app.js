@@ -248,7 +248,11 @@ createApp({
 
         // 行程項目彈窗
         const itemModal = reactive({ show: false, mode: 'add', targetId: null, draft: null });
+        const showItemCopy = ref(false);
+        const copyTargetDay = ref(null);
         const openItemModal = (item = null) => {
+            showItemCopy.value = false;
+            copyTargetDay.value = null;
             if (item) {
                 itemModal.mode = 'edit'; itemModal.targetId = item.id;
                 itemModal.draft = JSON.parse(JSON.stringify(item));
@@ -290,6 +294,30 @@ createApp({
             }
             sortItemsByTime(day.items); // 保留鐵則：完成編輯後依時間自動排序
             itemModal.show = false;
+        };
+        // 複製行程項目到本日或其他天（下拉選單預設本日，跟「天數對調」同一套介面）
+        const dayOptionsForCopy = computed(() => days.value.map((d, i) => ({ i, d })));
+        const toggleItemCopy = () => {
+            showItemCopy.value = !showItemCopy.value;
+            if (showItemCopy.value) copyTargetDay.value = currentDayIdx.value;
+        };
+        const confirmCopyItem = () => {
+            if (copyTargetDay.value === null || !itemModal.draft) return;
+            const targetIdx = copyTargetDay.value;
+            const targetDay = days.value[targetIdx];
+            if (!targetDay) return;
+            const newItem = { ...itemModal.draft, id: generateId() };
+            targetDay.items.push(newItem);
+            sortItemsByTime(targetDay.items);
+            showItemCopy.value = false;
+            copyTargetDay.value = null;
+            itemModal.show = false;
+            showToast(`已複製到第${targetIdx + 1}天`, {
+                icon: 'ph-bold ph-copy', undo: () => {
+                    const idx = targetDay.items.findIndex(i => i.id === newItem.id);
+                    if (idx !== -1) targetDay.items.splice(idx, 1);
+                }
+            });
         };
         const deleteItemFromModal = () => {
             const day = days.value[currentDayIdx.value];
@@ -1093,6 +1121,7 @@ createApp({
             showJoinInput, joinTripUrl, joinTrip,
             dialog, dialogAnswer, toast, undoToast,
             itemModal, openItemModal, saveItemModal, deleteItemFromModal, itemTimeHour, itemTimeMinute,
+            showItemCopy, copyTargetDay, dayOptionsForCopy, toggleItemCopy, confirmCopyItem,
             locModal, openLocModal, saveLocModal, deleteLocFromModal,
             expModal, openExpModal, saveExpModal, deleteExpFromModal,
             checklist, collapsedCats, toggleCat, checklistMembers, memberLabel, toggleCheck,

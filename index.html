@@ -1616,14 +1616,33 @@
                         </div>
 
                         <div class="flex items-center justify-between pt-2 border-t border-stone-50">
-                            <button v-if="itemModal.mode === 'edit'" @click="deleteItemFromModal"
-                                class="text-red-400 hover:text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1">
-                                <i class="ph-bold ph-trash"></i> 刪除
-                            </button>
+                            <div v-if="itemModal.mode === 'edit'" class="flex items-center gap-1">
+                                <button @click="deleteItemFromModal"
+                                    class="text-red-400 hover:text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                                    <i class="ph-bold ph-trash"></i> 刪除
+                                </button>
+                                <button @click="toggleItemCopy"
+                                    class="text-primary-500 hover:text-primary-600 hover:bg-primary-50 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                                    <i class="ph-bold ph-copy"></i> 複製
+                                </button>
+                            </div>
                             <span v-else></span>
                             <button @click="saveItemModal"
                                 class="bg-primary-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-md shadow-primary-200 hover:bg-primary-700 transition active:scale-95 flex items-center gap-2">
                                 <i class="ph-bold ph-check"></i> {{ itemModal.mode === 'edit' ? '儲存' : '新增' }}
+                            </button>
+                        </div>
+
+                        <div v-if="showItemCopy" class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-stone-500 shrink-0">複製到</span>
+                            <select v-model.number="copyTargetDay"
+                                class="flex-1 min-w-0 bg-stone-50 border-none rounded-xl text-sm font-bold text-stone-700 py-2 px-2 focus:ring-2 focus:ring-primary-200 appearance-none">
+                                <option v-for="opt in dayOptionsForCopy" :key="opt.i" :value="opt.i">第{{ opt.i + 1 }}天 {{
+                                    opt.d.shortDate }}{{ opt.i === currentDayIdx ? '（本日）' : '' }}</option>
+                            </select>
+                            <button @click="confirmCopyItem"
+                                class="px-4 py-2 bg-primary-500 text-white rounded-xl text-sm font-bold shadow-md shadow-primary-500/30 active:scale-95 transition shrink-0">
+                                確定
                             </button>
                         </div>
                     </div>
@@ -1986,7 +2005,7 @@
         })();
     </script>
 
-    <script type="module" src="./app.js?v=71"></script>
+    <script type="module" src="./app.js?v=72"></script>
 
     <script>
         setTimeout(() => {
