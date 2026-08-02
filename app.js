@@ -569,11 +569,17 @@ createApp({
         const visibleTrips = computed(() => allTrips.value.filter(t => !t.archived));
         const archivedTrips = computed(() => allTrips.value.filter(t => t.archived));
         // 點卡片＝加入我的旅程並開啟
+        // 點旅程＝把它移到清單最前面（不管是不是新加入），維持「最近使用」順序，
+        // 這樣下次開 App 才會正確回到你最後看的那個旅程，而不是永遠停在最早加入的那個
         const adoptTrip = (t) => {
-            if (!tripList.value.some(m => m.id === t.id)) {
+            const idx = tripList.value.findIndex(m => m.id === t.id);
+            if (idx === -1) {
                 tripList.value.unshift({ id: t.id, destination: t.destination, startDate: t.startDate, daysCount: t.daysCount });
-                saveTripList();
+            } else if (idx > 0) {
+                const [existing] = tripList.value.splice(idx, 1);
+                tripList.value.unshift(existing);
             }
+            saveTripList();
             switchTrip(t.id);
         };
         const unarchiveTrip = async (t) => {
@@ -623,17 +629,7 @@ createApp({
                 // 不是 URL 格式，直接當作 tripId 使用
             }
             if (!tripId) { showToast('無法解析行程 ID', { icon: 'ph-bold ph-warning' }); return; }
-            // 檢查是否已存在
-            if (tripList.value.find(t => t.id === tripId)) {
-                switchTrip(tripId);
-                showJoinInput.value = false;
-                joinTripUrl.value = '';
-                return;
-            }
-            // 加入行程列表
-            tripList.value.unshift({ id: tripId, destination: '載入中...', startDate: '...', daysCount: 0 });
-            saveTripList();
-            switchTrip(tripId);
+            adoptTrip({ id: tripId, destination: '載入中...', startDate: '...', daysCount: 0 });
             showJoinInput.value = false;
             joinTripUrl.value = '';
         };
@@ -1053,11 +1049,7 @@ createApp({
                 const sharedTripId = urlParams.get('tripId');
 
                 if (sharedTripId) {
-                    if (!tripList.value.find(t => t.id === sharedTripId)) {
-                        tripList.value.unshift({ id: sharedTripId, destination: '載入中...', startDate: '...', daysCount: 0 });
-                        saveTripList();
-                    }
-                    switchTrip(sharedTripId);
+                    adoptTrip({ id: sharedTripId, destination: '載入中...', startDate: '...', daysCount: 0 });
                 } else {
                     if (tripList.value.length > 0) {
                         switchTrip(tripList.value[0].id);
